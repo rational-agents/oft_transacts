@@ -1,0 +1,43 @@
+# OS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.dist/
+.build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtualenvs
+.env
+.venv/
+*/.venv/
+
+# Tooling
+.cache/
+.tox/
+.coverage
+htmlcov/
+pip-wheel-metadata/
+
+# Editor
+.vscode/
+.idea/
+
+# App runtime data
+backend/var/
+*.sqlite
+*.sqlite3
+
+# Node (when frontend gets deps)
+frontend/node_modules/
+# (choose whether to commit lockfiles; most teams do)
+# package-lock.json
+# pnpm-lock.yaml
+# yarn.lock

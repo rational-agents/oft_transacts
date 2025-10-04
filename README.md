@@ -1,0 +1,1 @@
+I used a single-repo structure to streamline local development and deployment. The repository contains isolated frontend/ and backend/ projects with separate build steps and CI/CD jobs, enabling coordinated releases now and easy separation later if needed.
