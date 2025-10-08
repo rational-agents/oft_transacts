@@ -7,6 +7,7 @@ PRAGMA foreign_keys = ON;
 -- to avoid foreign key constraints
 DROP VIEW IF EXISTS account_balances;
 DROP TABLE IF EXISTS transactions;
+DROP TABLE IF EXISTS transacts;
 DROP TABLE IF EXISTS accounts; 
 DROP TABLE IF EXISTS users; 
 

@@ -19,9 +19,28 @@ INSERT INTO accounts (
     )
 SELECT
     user_id,
-    'checking',
+    'chase checking',
     'USD',
     50000,
+    CURRENT_TIMESTAMP
+FROM
+    users
+WHERE 
+    email = 'john.kelly@rational-agents.ai';
+
+-- seed the account table with crypto account for jk in SATs equivalent to 1 bitcoin
+INSERT INTO accounts (
+    user_id,
+    account_name, 
+    currency, 
+    checkpoint_balance, 
+    checkpoint_timestamp
+    )
+SELECT
+    user_id,
+    'crypto',
+    'BTC',
+    100000000,
     CURRENT_TIMESTAMP
 FROM
     users
