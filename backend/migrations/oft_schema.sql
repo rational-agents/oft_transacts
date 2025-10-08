@@ -30,7 +30,7 @@ CREATE TABLE accounts (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
-CREATE TABLE transactions (
+CREATE TABLE transacts (
     trans_id INTEGER PRIMARY KEY,
     account_id INTEGER NOT NULL,
     occurred_at TIMESTAMP NOT NULL,
@@ -61,7 +61,7 @@ SELECT
         ) AS balance
 FROM 
     accounts AS a
-    LEFT JOIN transactions AS t ON t.account_id = a.account_id
+    LEFT JOIN transacts AS t ON t.account_id = a.account_id
         AND t.trans_status = 'posted'
         AND t.occurred_at >= a.checkpoint_timestamp
 GROUP BY

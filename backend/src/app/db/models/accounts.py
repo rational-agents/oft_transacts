@@ -20,4 +20,4 @@ class Account(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="accounts")
-    transactions: Mapped[list["Transaction"]] = relationship(back_populates="account", cascade="all, delete-orphan")
+    transacts: Mapped[list["Transact"]] = relationship(back_populates="account", cascade="all, delete-orphan")   

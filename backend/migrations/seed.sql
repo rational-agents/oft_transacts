@@ -7,7 +7,7 @@ PRAGMA foreign_keys = ON;
 
 -- seed the user table with a single user
 INSERT INTO users (email, username) VALUES
-('jkelly.admin@gmail.com', 'john kelly');
+('john.kelly@rational-agents.ai', 'john kelly');
 
 -- seed the account table with a checking account for jk in USD pennies equivalent to $500
 INSERT INTO accounts (
@@ -26,6 +26,6 @@ SELECT
 FROM
     users
 WHERE 
-    email = 'jkelly.admin@gmail.com';
+    email = 'john.kelly@rational-agents.ai';
 
 -- no transactions to seed

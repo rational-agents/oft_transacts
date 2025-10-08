@@ -3,6 +3,9 @@ from sqlalchemy.orm import sessionmaker, Session
 from contextlib import contextmanager
 from app.core.config import get_settings
 
+# ADD THIS IMPORT so all models are registered
+import app.db.models  # noqa: F401
+
 settings = get_settings()
 engine = create_engine(
     settings.database_url,

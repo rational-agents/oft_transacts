@@ -3,8 +3,8 @@ from sqlalchemy import Integer, String, DateTime, ForeignKey, CheckConstraint, t
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from . import Base
 
-class Transaction(Base):
-    __tablename__ = "transactions"
+class Transact(Base):
+    __tablename__ = "transacts"
 
     trans_id:   Mapped[int] = mapped_column(Integer, primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.account_id", ondelete="CASCADE"), nullable=False)
@@ -23,4 +23,4 @@ class Transaction(Base):
         CheckConstraint("trans_status in ('posted','deleted')", name="ck_tx_status"),
     )
 
-    account: Mapped["Account"] = relationship(back_populates="transactions")
+    account: Mapped["Account"] = relationship(back_populates="transacts")
