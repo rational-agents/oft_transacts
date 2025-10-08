@@ -6,7 +6,7 @@ type Account = { account_id: number; account_name: string; currency: string; }
 
 const { data, isLoading, isError, error } = useQuery({
   queryKey: ['accounts'],
-  queryFn: () => fetchJson<Account[]>('/api/accounts'),
+  queryFn: () => fetchJson<Account[]>('/accounts'),
 })
 </script>
 
