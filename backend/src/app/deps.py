@@ -47,3 +47,29 @@ async def get_current_user_id(
         db.flush()
 
     return user.user_id
+
+async def get_current_user(
+    creds: HTTPAuthorizationCredentials = Depends(bearer),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Verify the incoming Bearer JWT, then map OIDC `email` to your internal user record.
+    Returns the full SQLAlchemy User object.
+    """
+    token = creds.credentials
+    try:
+        claims = await verify_jwt_and_get_claims(token)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+    email = claims.get("email")
+    if not email:
+        raise HTTPException(status_code=401, detail="Token missing email claim")
+
+    user = db.scalar(select(User).where(User.email == email))
+    if not user:
+        # This is a valid token, but the user doesn't exist in our DB.
+        # In a real app, you might auto-provision a new user here.
+        raise HTTPException(status_code=403, detail=f"User {email} not found")
+
+    return user

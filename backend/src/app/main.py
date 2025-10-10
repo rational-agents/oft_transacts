@@ -23,8 +23,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "patch", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"], # allow all headers
 )
 
 # Log DB URL on startup (after app is created)
@@ -77,5 +77,6 @@ async def security_headers(req, call_next):
     return resp
 
 # --- Include routers AFTER app is created/configured ---
-from app.api import accounts
+from app.api import accounts, users
 app.include_router(accounts.router)
+app.include_router(users.router)
