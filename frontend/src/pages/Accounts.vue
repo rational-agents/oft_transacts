@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
-//import { useAuth } from '@okta/okta-vue'
 import { oidc } from '../lib/oidc'
 import { api } from '../lib/api'
 
@@ -19,13 +18,21 @@ type Account = {
 }
 
 type Transaction = {
-  id: number
+  trans_id: number
+  account_id: number
+  occurred_at: string
+  amount_cents: number
   direction: 'credit' | 'debit'
-  amount: number
-  currency: string
-  status: 'posted' | 'pending'
+  trans_status: 'posted' | 'deleted'
   notes: string
-  timestamp: string
+}
+
+type TransactsPage = {
+  items: Transaction[]
+  total: number
+  page: number
+  page_size: number
+  has_more: boolean
 }
 
 // --- Auth State ---
@@ -37,19 +44,10 @@ onMounted(async () => {
   isAuthenticated.value = !!user && !user.expired
 })
 
-// --- Mock Transaction Data (as requested) ---
-const allTransactions: { [key: number]: Transaction[] } = {
-  1: [ // Transactions for 'chase checking'
-    { id: 1, direction: 'debit', amount: 500.00, currency: 'USD', status: 'posted', notes: 'purchased ebike', timestamp: 'October 11, 2025 1:00pm' },
-    { id: 2, direction: 'credit', amount: 1500.00, currency: 'USD', status: 'posted', notes: 'Paycheck deposit', timestamp: 'October 10, 2025 9:00am' },
-  ],
-  2: [ // Transactions for 'crypto'
-    { id: 3, direction: 'credit', amount: 0.5, currency: 'BTC', status: 'pending', notes: 'Received from exchange', timestamp: 'October 9, 2025 5:45pm' },
-  ]
-}
-
 // --- State ---
 const selectedAccountId = ref<number | null>(null)
+const currentPage = ref(1)
+const allLoadedTransactions = ref<Transaction[]>([])
 
 // --- Queries ---
 const { data: user, isLoading: isUserLoading } = useQuery({
@@ -64,15 +62,53 @@ const { data: accounts, isLoading: areAccountsLoading } = useQuery({
   enabled: isAuthenticated,
 })
 
+const { 
+  data: transactsPage, 
+  isLoading: areTransactsLoading,
+  refetch: refetchTransacts 
+} = useQuery({
+  queryKey: ['transacts', selectedAccountId, currentPage],
+  queryFn: () => {
+    if (!selectedAccountId.value) return null
+    return api.get<TransactsPage>(
+      `/accounts/${selectedAccountId.value}/transacts?page=${currentPage.value}`
+    )
+  },
+  enabled: computed(() => isAuthenticated.value && selectedAccountId.value !== null),
+})
+
+// Watch for new transacts data and append to list
+watch(transactsPage, (newPage) => {
+  if (newPage && newPage.items) {
+    if (currentPage.value === 1) {
+      // First page - replace all
+      allLoadedTransactions.value = newPage.items
+    } else {
+      // Subsequent pages - append
+      allLoadedTransactions.value = [...allLoadedTransactions.value, ...newPage.items]
+    }
+  }
+})
+
+// Watch for account selection changes
+watch(selectedAccountId, () => {
+  // Reset pagination when account changes
+  currentPage.value = 1
+  allLoadedTransactions.value = []
+})
+
 // --- Computed Properties ---
-const transactionsForSelectedAccount = computed(() => {
-  if (!selectedAccountId.value) return []
-  return allTransactions[selectedAccountId.value] || []
+const hasMoreTransactions = computed(() => {
+  return transactsPage.value?.has_more ?? false
 })
 
 // --- Methods ---
 const selectAccount = (accountId: number) => {
   selectedAccountId.value = selectedAccountId.value === accountId ? null : accountId
+}
+
+const loadMoreTransactions = () => {
+  currentPage.value += 1
 }
 
 const formatCurrency = (amount: number, currency: string) => {
@@ -83,6 +119,23 @@ const formatCurrency = (amount: number, currency: string) => {
     currency,
     maximumFractionDigits: currency === 'BTC' ? 8 : 2,
   }).format(value)
+}
+
+const formatAmount = (amountCents: number, currency: string) => {
+  // Transaction amounts are stored in cents
+  const value = amountCents / 100;
+  return `${value.toFixed(2)} ${currency}`
+}
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  })
 }
 </script>
 
@@ -132,6 +185,12 @@ const formatCurrency = (amount: number, currency: string) => {
           <div v-if="!selectedAccountId" class="text-center py-12 px-6 bg-white rounded-xl shadow-sm border border-gray-200">
             <p class="text-gray-500">Select an account to view transactions.</p>
           </div>
+          <div v-else-if="areTransactsLoading && currentPage === 1" class="text-center py-12 px-6 bg-white rounded-xl shadow-sm border border-gray-200">
+            <p class="text-gray-500">Loading transactions...</p>
+          </div>
+          <div v-else-if="allLoadedTransactions.length === 0" class="text-center py-12 px-6 bg-white rounded-xl shadow-sm border border-gray-200">
+            <p class="text-gray-500">No transactions yet</p>
+          </div>
           <div v-else class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
@@ -143,22 +202,32 @@ const formatCurrency = (amount: number, currency: string) => {
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="tx in transactionsForSelectedAccount" :key="tx.id">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ tx.timestamp }}</td>
+                <tr v-for="tx in allLoadedTransactions" :key="tx.trans_id">
+                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ formatDate(tx.occurred_at) }}</td>
                   <td class="px-6 py-4 text-sm text-gray-800">{{ tx.notes }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-right font-mono text-sm">
                     <span :class="tx.direction === 'credit' ? 'text-green-600' : 'text-red-600'">
-                      {{ tx.direction === 'credit' ? '+' : '-' }} {{ tx.amount }} {{ tx.currency }}
+                      {{ tx.direction === 'credit' ? '+' : '-' }} {{ formatAmount(tx.amount_cents, 'USD') }}
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-center">
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="tx.status === 'posted' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
-                      {{ tx.status }}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="tx.trans_status === 'posted' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
+                      {{ tx.trans_status }}
                     </span>
                   </td>
                 </tr>
               </tbody>
             </table>
+            
+            <!-- Load More Link -->
+            <div v-if="hasMoreTransactions" class="p-4 text-center border-t border-gray-200">
+              <a 
+                @click="loadMoreTransactions" 
+                class="text-blue-600 hover:text-blue-800 underline cursor-pointer"
+              >
+                Load more transactions
+              </a>
+            </div>
           </div>
         </section>
       </div>

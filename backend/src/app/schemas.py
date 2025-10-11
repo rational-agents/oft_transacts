@@ -1,12 +1,14 @@
 # backend/src/app/schemas.py
 from pydantic import BaseModel
+from datetime import datetime
+from typing import List
 
 class UserProfile(BaseModel):
     username: str
     email: str
 
     class Config:
-        from_attributes = True
+        orm_mode = True  # Changed from from_attributes
 
 class AccountWithBalance(BaseModel):
     account_id: int
@@ -15,4 +17,24 @@ class AccountWithBalance(BaseModel):
     balance: int
 
     class Config:
-        from_attributes = True
+        orm_mode = True  # Changed from from_attributes
+
+
+class TransactResponse(BaseModel):
+    trans_id: int
+    account_id: int
+    occurred_at: datetime
+    amount_cents: int
+    direction: str  # 'credit' | 'debit'
+    trans_status: str  # 'posted' | 'deleted'
+    notes: str
+    
+    class Config:
+        orm_mode = True  # Changed from from_attributes
+
+class TransactsPage(BaseModel):
+    items: List[TransactResponse]
+    total: int
+    page: int
+    page_size: int
+    has_more: bool

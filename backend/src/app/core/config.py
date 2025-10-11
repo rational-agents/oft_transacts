@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     oidc_issuer: str    # e.g., https://integrator-1280701.okta.com/oauth2/default
     oidc_audience: str = "" # set if your API enforces a specific 'aud' claim
     allowed_origins: str = "http://localhost:5173"  # comma-separated list
+    # Pagination settings
+    transacts_page_size: int = 10  # number of transactions per page
 
     class Config:
         # keep your original behavior: read from a .env in backend/ working dir

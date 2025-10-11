@@ -77,6 +77,7 @@ async def security_headers(req, call_next):
     return resp
 
 # --- Include routers AFTER app is created/configured ---
-from app.api import accounts, users
+from app.api import accounts, users, transacts
 app.include_router(accounts.router)
 app.include_router(users.router)
+app.include_router(transacts.router)
