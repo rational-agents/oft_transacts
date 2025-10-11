@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
-import { useQuery } from '@tanstack/vue-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { oidc } from '../lib/oidc'
 import { api } from '../lib/api'
 
@@ -48,6 +48,11 @@ onMounted(async () => {
 const selectedAccountId = ref<number | null>(null)
 const currentPage = ref(1)
 const allLoadedTransactions = ref<Transaction[]>([])
+
+// --- Form State ---
+const newTransactionNotes = ref('')
+const newTransactionAmount = ref('')
+const newTransactionDirection = ref<'credit' | 'debit'>('debit')
 
 // --- Queries ---
 const { data: user, isLoading: isUserLoading } = useQuery({
@@ -98,6 +103,11 @@ watch(selectedAccountId, () => {
 })
 
 // --- Computed Properties ---
+const selectedAccount = computed(() => {
+  if (!selectedAccountId.value || !accounts.value) return null
+  return accounts.value.find(acc => acc.account_id === selectedAccountId.value)
+})
+
 const hasMoreTransactions = computed(() => {
   return transactsPage.value?.has_more ?? false
 })
@@ -135,6 +145,85 @@ const formatDate = (dateString: string) => {
     hour: 'numeric',
     minute: '2-digit',
     hour12: true
+  })
+}
+
+// --- Mutations ---
+const queryClient = useQueryClient()
+
+const createTransactionMutation = useMutation({
+  mutationFn: async (data: { notes: string; amount_cents: number; direction: 'credit' | 'debit' }) => {
+    return api.post<Transaction>(
+      `/accounts/${selectedAccountId.value}/transacts`,
+      data
+    )
+  },
+  onMutate: async (newTransaction) => {
+    // Cancel outgoing refetches
+    await queryClient.cancelQueries({ queryKey: ['transacts', selectedAccountId.value, currentPage.value] })
+    
+    // Snapshot the previous value
+    const previousTransactions = allLoadedTransactions.value
+    
+    // Optimistically update to the new value
+    const optimisticTransaction: Transaction = {
+      trans_id: Date.now(), // temporary ID
+      account_id: selectedAccountId.value!,
+      occurred_at: new Date().toISOString(),
+      amount_cents: newTransaction.amount_cents,
+      direction: newTransaction.direction,
+      trans_status: 'posted',
+      notes: newTransaction.notes
+    }
+    
+    // Add to top of list
+    allLoadedTransactions.value = [optimisticTransaction, ...allLoadedTransactions.value]
+    
+    // Return context with previous value
+    return { previousTransactions }
+  },
+  onError: (err, newTransaction, context) => {
+    // Rollback on error
+    if (context?.previousTransactions) {
+      allLoadedTransactions.value = context.previousTransactions
+    }
+  },
+  onSuccess: (createdTransaction) => {
+    // Replace optimistic transaction with real one from server
+    const optimisticIndex = allLoadedTransactions.value.findIndex(
+      tx => tx.trans_id > 1000000000000 // Find optimistic transaction by temporary ID
+    )
+    
+    if (optimisticIndex >= 0) {
+      allLoadedTransactions.value[optimisticIndex] = createdTransaction
+    }
+    
+    // Clear form
+    newTransactionNotes.value = ''
+    newTransactionAmount.value = ''
+    newTransactionDirection.value = 'debit'
+    
+    // Invalidate queries to ensure consistency
+    queryClient.invalidateQueries({ queryKey: ['transacts', selectedAccountId.value] })
+    queryClient.invalidateQueries({ queryKey: ['accounts'] })
+  }
+})
+
+const submitNewTransaction = () => {
+  if (!newTransactionNotes.value || !newTransactionAmount.value) {
+    return
+  }
+  
+  const amountInCents = Math.round(parseFloat(newTransactionAmount.value) * 100)
+  
+  if (isNaN(amountInCents) || amountInCents <= 0) {
+    return
+  }
+  
+  createTransactionMutation.mutate({
+    notes: newTransactionNotes.value,
+    amount_cents: amountInCents,
+    direction: newTransactionDirection.value
   })
 }
 </script>
@@ -182,6 +271,56 @@ const formatDate = (dateString: string) => {
         <!-- Transactions List Section -->
         <section class="lg:col-span-2">
           <h2 class="text-2xl font-bold text-gray-800 mb-4">Transactions</h2>
+          <!-- Add Transaction Form -->
+          <div v-if="selectedAccountId" class="mb-4 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <form @submit.prevent="submitNewTransaction" class="flex items-center divide-x divide-gray-200">
+              <!-- Notes Field -->
+              <div class="flex-1 px-6 py-4">
+                <input
+                  v-model="newTransactionNotes"
+                  type="text"
+                  placeholder="Transact description..."
+                  class="w-full text-sm text-gray-800 focus:outline-none"
+                  :disabled="createTransactionMutation.isPending.value"
+                />
+              </div>
+              
+              <!-- Direction Select -->
+              <div class="px-6 py-4">
+                <select
+                  v-model="newTransactionDirection"
+                  class="text-sm text-gray-800 focus:outline-none cursor-pointer"
+                  :disabled="createTransactionMutation.isPending.value"
+                >
+                  <option value="debit">Debit (-)</option>
+                  <option value="credit">Credit (+)</option>
+                </select>
+              </div>
+              
+              <!-- Amount Field -->
+              <div class="px-6 py-4">
+                <input
+                  v-model="newTransactionAmount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  :placeholder="`Amount (${selectedAccount?.currency || 'USD'})`"
+                  class="w-32 text-right font-mono text-sm text-gray-800 focus:outline-none"
+                  :disabled="createTransactionMutation.isPending.value"
+                />
+              </div>
+              
+              <!-- Submit Button -->
+              <div class="px-6 py-4">
+                <button
+                  type="submit"
+                  :disabled="!newTransactionNotes || !newTransactionAmount || createTransactionMutation.isPending.value"
+                  class="px-4 py-1 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors">
+                  {{ createTransactionMutation.isPending.value ? 'Adding...' : 'Add' }}
+                </button>
+              </div>
+            </form>
+          </div>
           <div v-if="!selectedAccountId" class="text-center py-12 px-6 bg-white rounded-xl shadow-sm border border-gray-200">
             <p class="text-gray-500">Select an account to view transactions.</p>
           </div>

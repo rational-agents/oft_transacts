@@ -7,8 +7,9 @@ from app.deps import get_db, get_current_user
 from app.db.models.users import User
 from app.db.models.accounts import Account
 from app.db.models.transacts import Transact
-from app.schemas import TransactsPage, TransactResponse
+from app.schemas import TransactsPage, TransactResponse, CreateTransactRequest
 from app.core.config import get_settings
+from datetime import datetime
 
 router = APIRouter(prefix="/accounts", tags=["transacts"])
 
@@ -72,3 +73,53 @@ def get_account_transacts(
         page_size=page_size,
         has_more=has_more
     )
+
+@router.post("/{account_id}/transacts", response_model=TransactResponse, status_code=201)
+def create_account_transact(
+    account_id: int,
+    transact_data: CreateTransactRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Create a new transaction for a specific account.
+    
+    - Verifies account ownership
+    - Sets status to 'posted' by default
+    - Sets occurred_at to current timestamp
+    - Returns the created transaction
+    """
+    # Authorization: verify the account belongs to the current user
+    account = db.scalar(
+        select(Account).where(
+            Account.account_id == account_id,
+            Account.user_id == current_user.user_id
+        )
+    )
+    
+    if not account:
+        raise HTTPException(status_code=403, detail="Access denied to this account")
+    
+    # Validate direction
+    if transact_data.direction not in ('credit', 'debit'):
+        raise HTTPException(status_code=400, detail="Direction must be 'credit' or 'debit'")
+    
+    # Validate amount
+    if transact_data.amount_cents <= 0:
+        raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+    
+    # Create new transaction
+    new_transact = Transact(
+        account_id=account_id,
+        occurred_at=datetime.utcnow(),
+        amount_cents=transact_data.amount_cents,
+        direction=transact_data.direction,
+        trans_status='posted',
+        notes=transact_data.notes
+    )
+    
+    db.add(new_transact)
+    db.commit()
+    db.refresh(new_transact)
+    
+    return TransactResponse.from_orm(new_transact)

@@ -38,3 +38,8 @@ class TransactsPage(BaseModel):
     page: int
     page_size: int
     has_more: bool
+
+class CreateTransactRequest(BaseModel):
+    notes: str
+    amount_cents: int
+    direction: str  # 'credit' | 'debit'
