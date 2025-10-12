@@ -1,7 +1,7 @@
 # backend/src/app/schemas.py
 from pydantic import BaseModel
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 class UserProfile(BaseModel):
     username: str
@@ -43,3 +43,9 @@ class CreateTransactRequest(BaseModel):
     notes: str
     amount_cents: int
     direction: str  # 'credit' | 'debit'
+
+class UpdateTransactRequest(BaseModel):
+    notes: Optional[str] = None
+    amount_cents: Optional[int] = None
+    direction: Optional[str] = None  # 'credit' | 'debit'
+    trans_status: Optional[str] = None  # 'posted' | 'deleted'

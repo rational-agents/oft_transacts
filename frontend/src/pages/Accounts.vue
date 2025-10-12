@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { oidc } from '../lib/oidc'
 import { api } from '../lib/api'
+import TransactionEditModal from '../components/TransactionEditModal.vue'
 
 // --- Types ---
 type User = {
@@ -53,6 +54,10 @@ const allLoadedTransactions = ref<Transaction[]>([])
 const newTransactionNotes = ref('')
 const newTransactionAmount = ref('')
 const newTransactionDirection = ref<'credit' | 'debit'>('debit')
+
+// modal state
+const selectedTransactionId = ref<number | null>(null)
+const isModalOpen = ref(false)
 
 // --- Queries ---
 const { data: user, isLoading: isUserLoading } = useQuery({
@@ -146,6 +151,27 @@ const formatDate = (dateString: string) => {
     minute: '2-digit',
     hour12: true
   })
+}
+
+// method to open modal
+const openTransactionModal = (transactionId: number) => {
+  selectedTransactionId.value = transactionId
+  isModalOpen.value = true
+}
+
+const closeTransactionModal = () => {
+  isModalOpen.value = false
+  selectedTransactionId.value = null
+}
+
+const handleTransactionUpdated = () => {
+  // Modal will handle cache invalidation
+  // List will automatically update via query invalidation
+}
+
+const handleTransactionDeleted = () => {
+  // Modal will handle cache invalidation and close
+  // List will automatically update via query invalidation
 }
 
 // --- Mutations ---
@@ -338,10 +364,16 @@ const submitNewTransaction = () => {
                   <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
                   <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
                   <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"></th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="tx in allLoadedTransactions" :key="tx.trans_id">
+                <tr 
+                  v-for="tx in allLoadedTransactions" 
+                  :key="tx.trans_id"
+                  @click="openTransactionModal(tx.trans_id)"
+                  class="cursor-pointer hover:bg-gray-100 hover:shadow-md transition-all duration-200"
+                >
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ formatDate(tx.occurred_at) }}</td>
                   <td class="px-6 py-4 text-sm text-gray-800">{{ tx.notes }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-right font-mono text-sm">
@@ -353,6 +385,11 @@ const submitNewTransaction = () => {
                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="tx.trans_status === 'posted' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'">
                       {{ tx.trans_status }}
                     </span>
+                  </td>
+                  <td class="px-6 py-4 whitespace-nowrap text-right text-gray-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
                   </td>
                 </tr>
               </tbody>
@@ -372,5 +409,15 @@ const submitNewTransaction = () => {
       </div>
 
     </div>
+    <!-- Transaction Edit Modal -->
+    <TransactionEditModal
+      :is-open="isModalOpen"
+      :transaction-id="selectedTransactionId"
+      :account-id="selectedAccountId || 0"
+      :currency="selectedAccount?.currency || 'USD'"
+      @close="closeTransactionModal"
+      @updated="handleTransactionUpdated"
+      @deleted="handleTransactionDeleted"
+    />
   </div>
 </template>

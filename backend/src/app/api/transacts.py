@@ -7,7 +7,7 @@ from app.deps import get_db, get_current_user
 from app.db.models.users import User
 from app.db.models.accounts import Account
 from app.db.models.transacts import Transact
-from app.schemas import TransactsPage, TransactResponse, CreateTransactRequest
+from app.schemas import TransactsPage, TransactResponse, CreateTransactRequest, UpdateTransactRequest
 from app.core.config import get_settings
 from datetime import datetime
 
@@ -123,3 +123,110 @@ def create_account_transact(
     db.refresh(new_transact)
     
     return TransactResponse.from_orm(new_transact)
+
+# Add these endpoints to backend/src/app/api/transacts.py
+
+@router.get("/{account_id}/transacts/{trans_id}", response_model=TransactResponse)
+def get_transaction_detail(
+    account_id: int,
+    trans_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Fetch a single transaction by ID.
+    
+    - Verifies account ownership
+    - Returns transaction detail
+    """
+    # Authorization: verify the account belongs to the current user
+    account = db.scalar(
+        select(Account).where(
+            Account.account_id == account_id,
+            Account.user_id == current_user.user_id
+        )
+    )
+    
+    if not account:
+        raise HTTPException(status_code=403, detail="Access denied to this account")
+    
+    # Fetch transaction
+    transact = db.scalar(
+        select(Transact).where(
+            Transact.trans_id == trans_id,
+            Transact.account_id == account_id
+        )
+    )
+    
+    if not transact:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    return TransactResponse.from_orm(transact)
+
+
+@router.patch("/{account_id}/transacts/{trans_id}", response_model=TransactResponse)
+def update_transaction(
+    account_id: int,
+    trans_id: int,
+    update_data: UpdateTransactRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update a transaction (edit or soft-delete).
+    
+    - Verifies account ownership
+    - Validates field constraints
+    - Only allows soft-delete if status is currently 'posted'
+    - Returns updated transaction
+    """
+    # Authorization: verify the account belongs to the current user
+    account = db.scalar(
+        select(Account).where(
+            Account.account_id == account_id,
+            Account.user_id == current_user.user_id
+        )
+    )
+    
+    if not account:
+        raise HTTPException(status_code=403, detail="Access denied to this account")
+    
+    # Fetch transaction
+    transact = db.scalar(
+        select(Transact).where(
+            Transact.trans_id == trans_id,
+            Transact.account_id == account_id
+        )
+    )
+    
+    if not transact:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+    
+    # Apply updates
+    if update_data.notes is not None:
+        transact.notes = update_data.notes
+    
+    if update_data.amount_cents is not None:
+        if update_data.amount_cents <= 0:
+            raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+        transact.amount_cents = update_data.amount_cents
+    
+    if update_data.direction is not None:
+        if update_data.direction not in ('credit', 'debit'):
+            raise HTTPException(status_code=400, detail="Direction must be 'credit' or 'debit'")
+        transact.direction = update_data.direction
+    
+    if update_data.trans_status is not None:
+        # Only allow transition to 'deleted' from 'posted'
+        if update_data.trans_status == 'deleted' and transact.trans_status != 'posted':
+            raise HTTPException(status_code=400, detail="Can only soft-delete posted transactions")
+        
+        if update_data.trans_status not in ('posted', 'deleted'):
+            raise HTTPException(status_code=400, detail="Status must be 'posted' or 'deleted'")
+        
+        transact.trans_status = update_data.trans_status
+    
+    db.commit()
+    db.refresh(transact)
+    
+    return TransactResponse.from_orm(transact)
