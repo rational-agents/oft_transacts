@@ -378,7 +378,7 @@ const submitNewTransaction = () => {
                   <td class="px-6 py-4 text-sm text-gray-800">{{ tx.notes }}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-right font-mono text-sm">
                     <span :class="tx.direction === 'credit' ? 'text-green-600' : 'text-red-600'">
-                      {{ tx.direction === 'credit' ? '+' : '-' }} {{ formatAmount(tx.amount_cents, 'USD') }}
+                      {{ tx.direction === 'credit' ? '+' : '-' }} {{ formatAmount(tx.amount_cents, selectedAccount?.currency || 'USD') }}
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-center">
