@@ -107,6 +107,12 @@ watch(selectedAccountId, () => {
   // Reset pagination when account changes
   currentPage.value = 1
   allLoadedTransactions.value = []
+  
+  // Clear transaction input form
+  newTransactionNotes.value = ''
+  newTransactionAmount.value = ''
+  newTransactionDirection.value = 'debit'
+  newTransactionAmountError.value = ''
 })
 
 // --- Computed Properties ---
