@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { api } from '../lib/api'
+import { formatBaseUnitsToDisplay, validateAmountPrecision, getInputStep } from '../lib/currency'
 
 // Props & Emits
 interface Props {
@@ -37,6 +38,7 @@ const showConfirmSaveOnClose = ref(false)
 const showConfirmSaveOnDelete = ref(false)
 const successMessage = ref('')
 const pendingAction = ref<'close' | 'delete' | null>(null)
+const editAmountError = ref('')
 
 // Query for transaction detail
 const { data: transaction, isLoading } = useQuery({
@@ -54,7 +56,7 @@ const { data: transaction, isLoading } = useQuery({
 watch(transaction, (newTransaction) => {
   if (newTransaction) {
     editNotes.value = newTransaction.notes
-    editAmount.value = (newTransaction.amount_cents / 100).toFixed(2)
+    editAmount.value = formatBaseUnitsToDisplay(newTransaction.amount_cents, props.currency)
     editDirection.value = newTransaction.direction
   }
 }, { immediate: true })
@@ -63,7 +65,8 @@ watch(transaction, (newTransaction) => {
 const isDirty = computed(() => {
   if (!transaction.value) return false
   
-  const currentAmountCents = Math.round(parseFloat(editAmount.value) * 100)
+  const validation = validateAmountPrecision(editAmount.value, props.currency)
+  const currentAmountCents = validation.isValid ? validation.valueInBaseUnits! : -1
   
   return (
     editNotes.value !== transaction.value.notes ||
@@ -77,11 +80,10 @@ const isDeleteButtonVisible = computed(() => {
 })
 
 const isFormValid = computed(() => {
-  const amount = parseFloat(editAmount.value)
+  const validation = validateAmountPrecision(editAmount.value, props.currency)
   return (
     editNotes.value.trim() !== '' &&
-    !isNaN(amount) &&
-    amount > 0 &&
+    validation.isValid &&
     (editDirection.value === 'credit' || editDirection.value === 'debit')
   )
 })
@@ -152,13 +154,18 @@ const deleteMutation = useMutation({
 
 // Methods
 const handleSave = () => {
-  if (!isFormValid.value) return
+  const validation = validateAmountPrecision(editAmount.value, props.currency)
   
-  const amountInCents = Math.round(parseFloat(editAmount.value) * 100)
+  if (!validation.isValid) {
+    editAmountError.value = validation.errorMessage || 'Invalid amount'
+    return
+  }
+  
+  editAmountError.value = ''
   
   updateMutation.mutate({
     notes: editNotes.value,
-    amount_cents: amountInCents,
+    amount_cents: validation.valueInBaseUnits!,
     direction: editDirection.value
   })
 }
@@ -291,11 +298,14 @@ const handleCloseWithoutSave = () => {
               id="edit-amount"
               v-model="editAmount"
               type="number"
-              step="0.01"
-              min="0.01"
-              class="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              :step="getInputStep(currency)"
+              min="0"
+              class="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono"
+              :class="editAmountError ? 'border-red-500' : 'border-gray-300'"
               :disabled="updateMutation.isPending.value || deleteMutation.isPending.value"
+              @input="editAmountError = ''"
             />
+            <p v-if="editAmountError" class="mt-1 text-sm text-red-600">{{ editAmountError }}</p>
           </div>
           <div>
             <label for="edit-direction" class="block text-sm font-medium text-gray-700 mb-1">Direction</label>

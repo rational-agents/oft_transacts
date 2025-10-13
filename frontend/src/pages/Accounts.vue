@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/vue-query'
 import { oidc } from '../lib/oidc'
 import { api } from '../lib/api'
 import TransactionEditModal from '../components/TransactionEditModal.vue'
+import { formatBaseUnitsToDisplay, formatAmountWithCurrency, validateAmountPrecision, getInputStep } from '../lib/currency'
 
 // --- Types ---
 type User = {
@@ -54,6 +55,7 @@ const allLoadedTransactions = ref<Transaction[]>([])
 const newTransactionNotes = ref('')
 const newTransactionAmount = ref('')
 const newTransactionDirection = ref<'credit' | 'debit'>('debit')
+const newTransactionAmountError = ref('')
 
 // modal state
 const selectedTransactionId = ref<number | null>(null)
@@ -127,19 +129,20 @@ const loadMoreTransactions = () => {
 }
 
 const formatCurrency = (amount: number, currency: string) => {
-  // Handle balances that are in cents for USD
-  const value = currency === 'USD' ? amount / 100 : amount;
+  // Balance is stored in base units (cents for USD, satoshis for BTC)
+  const value = formatBaseUnitsToDisplay(amount, currency)
+  const numValue = parseFloat(value)
+  
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency,
-    maximumFractionDigits: currency === 'BTC' ? 8 : 2,
-  }).format(value)
+    minimumFractionDigits: currency === 'USD' ? 2 : 0,
+    maximumFractionDigits: currency === 'USD' ? 2 : 8,
+  }).format(numValue)
 }
 
 const formatAmount = (amountCents: number, currency: string) => {
-  // Transaction amounts are stored in cents
-  const value = amountCents / 100;
-  return `${value.toFixed(2)} ${currency}`
+  return formatAmountWithCurrency(amountCents, currency)
 }
 
 const formatDate = (dateString: string) => {
@@ -240,15 +243,19 @@ const submitNewTransaction = () => {
     return
   }
   
-  const amountInCents = Math.round(parseFloat(newTransactionAmount.value) * 100)
+  const currency = selectedAccount.value?.currency || 'USD'
+  const validation = validateAmountPrecision(newTransactionAmount.value, currency)
   
-  if (isNaN(amountInCents) || amountInCents <= 0) {
+  if (!validation.isValid) {
+    newTransactionAmountError.value = validation.errorMessage || 'Invalid amount'
     return
   }
   
+  newTransactionAmountError.value = ''
+  
   createTransactionMutation.mutate({
     notes: newTransactionNotes.value,
-    amount_cents: amountInCents,
+    amount_cents: validation.valueInBaseUnits!,
     direction: newTransactionDirection.value
   })
 }
@@ -328,11 +335,13 @@ const submitNewTransaction = () => {
                 <input
                   v-model="newTransactionAmount"
                   type="number"
-                  step="0.01"
-                  min="0.01"
+                  :step="getInputStep(selectedAccount?.currency || 'USD')"
+                  min="0"
                   :placeholder="`Amount (${selectedAccount?.currency || 'USD'})`"
                   class="w-32 text-right font-mono text-sm text-gray-800 focus:outline-none"
+                  :class="{ 'border-red-500': newTransactionAmountError }"
                   :disabled="createTransactionMutation.isPending.value"
+                  @input="newTransactionAmountError = ''"
                 />
               </div>
               
@@ -346,6 +355,10 @@ const submitNewTransaction = () => {
                 </button>
               </div>
             </form>
+            <!-- Validation Error -->
+            <div v-if="newTransactionAmountError" class="px-6 py-2 bg-red-50 border-l-4 border-red-500">
+              <p class="text-sm text-red-700">{{ newTransactionAmountError }}</p>
+            </div>
           </div>
           <div v-if="!selectedAccountId" class="text-center py-12 px-6 bg-white rounded-xl shadow-sm border border-gray-200">
             <p class="text-gray-500">Select an account to view transactions.</p>
