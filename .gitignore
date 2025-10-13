@@ -15,9 +15,17 @@ __pycache__/
 .ruff_cache/
 
 # Frontend env files (Vite)
+# Ignore actual environment files
 frontend/.env
-frontend/.env.*
-!frontend/.env.example  # keep a template tracked
+frontend/.env.local
+frontend/.env.development
+frontend/.env.development.local
+frontend/.env.production
+frontend/.env.production.local
+frontend/.env.test
+frontend/.env.test.local
+# Keep the example template tracked
+!frontend/.env.example
 
 # Backend env file
 backend/.env
