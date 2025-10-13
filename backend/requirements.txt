@@ -1,6 +1,5 @@
 # Backend dependencies (pinned for reproducibility)
 # Python: 3.12 compatible, FastAPI with Pydantic v1
-
 fastapi==0.118.0
 starlette==0.48.0
 uvicorn[standard]==0.37.0
@@ -10,4 +9,4 @@ httpx==0.28.1
 # Optional tooling used by the stack (already present in environment)
 python-dotenv==1.1.1
 python-jose[cryptography]==3.5.0
-
+"psycopg[binary]"
