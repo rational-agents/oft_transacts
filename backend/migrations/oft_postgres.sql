@@ -1,8 +1,7 @@
 /*
 decription: idempotent script to create the OFT schema
-target: sqlite
+target: postgres
 */
-PRAGMA foreign_keys = ON;
 
 -- 1. Drop all tables in order 
 -- to avoid foreign key constraints
@@ -15,14 +14,14 @@ DROP TABLE IF EXISTS users;
 -- 2. Create all tables in order
 
 CREATE TABLE users (
-    user_id INTEGER PRIMARY KEY,
+    user_id SERIAL PRIMARY KEY,
     email TEXT NOT NULL UNIQUE,  -- Store as lowercase for case-insensitive matching
     username TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE accounts (
-    account_id INTEGER PRIMARY KEY,
+    account_id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL,
     account_name TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'USD',
@@ -33,7 +32,7 @@ CREATE TABLE accounts (
 );
 
 CREATE TABLE transacts (
-    trans_id INTEGER PRIMARY KEY,
+    trans_id SERIAL PRIMARY KEY,
     account_id INTEGER NOT NULL,
     occurred_at TIMESTAMP NOT NULL,
     amount_cents INTEGER NOT NULL CHECK (amount_cents >= 0),
