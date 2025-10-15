@@ -3,9 +3,8 @@ description: seed data for the OFT schema
     start without transactions in order to ensure 
     resilience of the implementation.
 */
-PRAGMA foreign_keys = ON;
 
--- seed the user table with a single user
+-- seed the user table with a single user (email stored as lowercase)
 INSERT INTO users (email, username) VALUES
 ('john.kelly@rational-agents.ai', 'john kelly');
 

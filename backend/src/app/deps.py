@@ -40,6 +40,8 @@ async def get_current_user_id(
 
     # Minimal auto-provision: prefer email if present; fall back to sub
     email = claims.get("email", f"sub:{sub}")
+    # Normalize email to lowercase for case-insensitive matching
+    email = email.lower() if isinstance(email, str) else email
     user = db.scalar(select(User).where(User.email == email))
     if not user:
         user = User(email=email, username=claims.get("name", sub))
@@ -66,6 +68,8 @@ async def get_current_user(
     if not email:
         raise HTTPException(status_code=401, detail="Token missing email claim")
 
+    # Normalize email to lowercase for case-insensitive matching
+    email = email.lower()
     user = db.scalar(select(User).where(User.email == email))
     if not user:
         # This is a valid token, but the user doesn't exist in our DB.

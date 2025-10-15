@@ -8,7 +8,7 @@ class User(Base):
     __tablename__ = "users"
 
     user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    email:   Mapped[str] = mapped_column(String(collation="NOCASE"), unique=True, nullable=False)
+    email:   Mapped[str] = mapped_column(String, unique=True, nullable=False)  # Store as lowercase
     username:Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=text("CURRENT_TIMESTAMP"), nullable=False)
 

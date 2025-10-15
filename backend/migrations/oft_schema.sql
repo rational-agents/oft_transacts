@@ -1,7 +1,6 @@
 /*
 decription: idempotent script to create the OFT schema
 */
-PRAGMA foreign_keys = ON;
 
 -- 1. Drop all tables in order 
 -- to avoid foreign key constraints
@@ -15,7 +14,7 @@ DROP TABLE IF EXISTS users;
 
 CREATE TABLE users (
     user_id INTEGER PRIMARY KEY,
-    email TEXT NOT NULL COLLATE NOCASE UNIQUE,
+    email TEXT NOT NULL UNIQUE,  -- Store as lowercase for case-insensitive matching
     username TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
