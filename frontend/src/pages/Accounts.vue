@@ -268,13 +268,13 @@ const submitNewTransaction = () => {
 </script>
 
 <template>
-  <div class="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
-    <div class="max-w-7xl mx-auto">
+  <div class="w-full p-4 sm:p-6 lg:p-8 bg-gray-50">
+    <div class="w-full max-w-7xl mx-auto">
 
       <!-- User Details Section -->
       <section class="mb-8 p-6 bg-white rounded-xl shadow-sm border border-gray-200">
         <h2 class="text-2xl font-bold text-gray-800 mb-4">User Profile</h2>
-        <div v-if="isUserLoading" class="text-gray-500">Loading user...</div>
+        <div v-if="isUserLoading" class="text-gray-500 min-h-[72px] flex items-center">Loading user...</div>
         <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div class="text-sm font-medium text-gray-500">Username</div>
@@ -287,13 +287,13 @@ const submitNewTransaction = () => {
         </div>
       </section>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-8">
         <!-- Accounts List Section -->
-        <section class="lg:col-span-1">
+        <section class="min-w-0 lg:min-w-[298px]">
           <h2 class="text-2xl font-bold text-gray-800 mb-4">Accounts</h2>
           <div v-if="areAccountsLoading" class="text-gray-500">Loading accounts...</div>
           <ul v-else class="space-y-3">
-            <li v-for="account in accounts" :key="account.account_id" @click="selectAccount(account.account_id)" class="p-4 rounded-lg border transition-all duration-200 cursor-pointer" :class="[selectedAccountId === account.account_id ? 'bg-blue-500 text-white shadow-lg ring-2 ring-blue-300' : 'bg-white hover:bg-gray-100 hover:shadow-md']">
+            <li v-for="account in accounts" :key="account.account_id" @click="selectAccount(account.account_id)" class="p-4 rounded-lg border ring-2 transition-all duration-200 cursor-pointer" :class="[selectedAccountId === account.account_id ? 'bg-blue-500 text-white shadow-lg ring-blue-300' : 'bg-white hover:bg-gray-100 hover:shadow-md ring-transparent']">
               <div class="flex justify-between items-center">
                 <div class="font-semibold text-lg">{{ account.account_name }}</div>
                 <div class="font-mono text-sm px-2 py-1 rounded" :class="selectedAccountId === account.account_id ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'">
@@ -308,7 +308,7 @@ const submitNewTransaction = () => {
         </section>
 
         <!-- Transactions List Section -->
-        <section class="lg:col-span-2">
+        <section class="min-w-0 lg:min-w-[597px]">
           <h2 class="text-2xl font-bold text-gray-800 mb-4">Transactions</h2>
           <!-- Add Transaction Form -->
           <div v-if="selectedAccountId" class="mb-4 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
