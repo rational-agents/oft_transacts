@@ -38,17 +38,22 @@ async def get_current_user_id(
     if not sub:
         raise HTTPException(status_code=401, detail="Missing sub")
 
-    # Minimal auto-provision: prefer email if present; fall back to sub
-    email = claims.get("email", f"sub:{sub}")
-    # Normalize email to lowercase for case-insensitive matching
-    email = email.lower() if isinstance(email, str) else email
-    user = db.scalar(select(User).where(User.email == email))
-    if not user:
-        user = User(email=email, username=claims.get("name", sub))
-        db.add(user)
-        db.flush()
+    try:
+        # Minimal auto-provision: prefer email if present; fall back to sub
+        email = claims.get("email", f"sub:{sub}")
+        # Normalize email to lowercase for case-insensitive matching
+        email = email.lower() if isinstance(email, str) else email
+        user = db.scalar(select(User).where(User.email == email))
+        if not user:
+            user = User(email=email, username=claims.get("name", sub))
+            db.add(user)
+            db.flush()
 
-    return user.user_id
+        return user.user_id
+    except Exception:
+        # Ensure transaction is rolled back on any database error
+        db.rollback()
+        raise
 
 async def get_current_user(
     creds: HTTPAuthorizationCredentials = Depends(bearer),
@@ -68,12 +73,20 @@ async def get_current_user(
     if not email:
         raise HTTPException(status_code=401, detail="Token missing email claim")
 
-    # Normalize email to lowercase for case-insensitive matching
-    email = email.lower()
-    user = db.scalar(select(User).where(User.email == email))
-    if not user:
-        # This is a valid token, but the user doesn't exist in our DB.
-        # In a real app, you might auto-provision a new user here.
-        raise HTTPException(status_code=403, detail=f"User {email} not found")
+    try:
+        # Normalize email to lowercase for case-insensitive matching
+        email = email.lower()
+        user = db.scalar(select(User).where(User.email == email))
+        if not user:
+            # This is a valid token, but the user doesn't exist in our DB.
+            # In a real app, you might auto-provision a new user here.
+            raise HTTPException(status_code=403, detail=f"User {email} not found")
 
-    return user
+        return user
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except Exception:
+        # Ensure transaction is rolled back on any database error
+        db.rollback()
+        raise

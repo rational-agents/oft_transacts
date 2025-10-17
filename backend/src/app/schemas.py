@@ -1,5 +1,5 @@
 # backend/src/app/schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, validator
 from datetime import datetime
 from typing import List, Optional
 
@@ -41,11 +41,28 @@ class TransactsPage(BaseModel):
 
 class CreateTransactRequest(BaseModel):
     notes: str
-    amount_cents: int
+    amount_cents: int = Field(..., gt=0, le=9223372036854775807, description="Amount in cents (supports large values)")
     direction: str  # 'credit' | 'debit'
+    
+    @validator('amount_cents')
+    def validate_amount(cls, v):
+        if v <= 0:
+            raise ValueError('Amount must be greater than 0')
+        if v > 9223372036854775807:  # PostgreSQL BIGINT max
+            raise ValueError('Amount exceeds maximum allowed value')
+        return v
 
 class UpdateTransactRequest(BaseModel):
     notes: Optional[str] = None
-    amount_cents: Optional[int] = None
+    amount_cents: Optional[int] = Field(None, gt=0, le=9223372036854775807, description="Amount in cents (supports large values)")
     direction: Optional[str] = None  # 'credit' | 'debit'
     trans_status: Optional[str] = None  # 'posted' | 'deleted'
+    
+    @validator('amount_cents')
+    def validate_amount(cls, v):
+        if v is not None:
+            if v <= 0:
+                raise ValueError('Amount must be greater than 0')
+            if v > 9223372036854775807:  # PostgreSQL BIGINT max
+                raise ValueError('Amount exceeds maximum allowed value')
+        return v

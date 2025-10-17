@@ -119,8 +119,7 @@ def create_account_transact(
     )
     
     db.add(new_transact)
-    db.commit()
-    db.refresh(new_transact)
+    db.flush()  # Flush to get generated ID, session_scope() will commit
     
     return TransactResponse.from_orm(new_transact)
 
@@ -226,7 +225,6 @@ def update_transaction(
         
         transact.trans_status = update_data.trans_status
     
-    db.commit()
-    db.refresh(transact)
+    db.flush()  # Flush changes, session_scope() will commit
     
     return TransactResponse.from_orm(transact)
