@@ -4,6 +4,7 @@
       <RouterLink to="/" class="font-semibold">OFT</RouterLink>
       <RouterLink to="/accounts" class="text-gray-700 hover:text-black">Accounts</RouterLink>
       <a :href="apiDocsUrl" target="_blank" rel="noopener noreferrer" class="text-gray-700 hover:text-black">API Docs</a>
+      <a href="https://rational-agents.ai/" class="ml-auto text-gray-700 hover:text-black">log out</a>
     </nav>
   </header>
 </template>
