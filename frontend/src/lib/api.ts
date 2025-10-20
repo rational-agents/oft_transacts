@@ -37,13 +37,21 @@ export async function fetchJson<T>(path: string, init?: RequestInit): Promise<T>
     headers,
   });
 
+  // If unauthorized/forbidden, clear local user and force a fresh sign-in
+  if (res.status === 401 || res.status === 403) {
+    try {
+      await oidc.removeUser();
+    } finally {
+      await oidc.signinRedirect();
+    }
+    throw new Error(`HTTP ${res.status}: unauthorized`);
+  }
+
   if (!res.ok) {
-    // Keep your original detailed error surface
     const text = await res.text();
     throw new Error(`HTTP ${res.status}: ${text}`);
   }
 
-  // If no body (204), return undefined as any to satisfy T in rare cases
   if (res.status === 204) return undefined as unknown as T;
 
   return (await res.json()) as T;

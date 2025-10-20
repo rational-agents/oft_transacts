@@ -4,7 +4,7 @@ import { UserManager, WebStorageStateStore, Log } from "oidc-client-ts";
 const authority = import.meta.env.VITE_OIDC_ISSUER;          // e.g., https://your-tenant.auth0.com
 const client_id = import.meta.env.VITE_OIDC_CLIENT_ID;       // SPA client id at your IdP
 const redirect_uri = window.location.origin + "/signin-callback";
-const post_logout_redirect_uri = window.location.origin + "/";
+const post_logout_redirect_uri = window.location.origin + "/logged-out";
 const scope = "openid profile email";                         // add API-specific scopes if configured
 
 Log.setLevel(Log.NONE); // use Log.DEBUG locally
@@ -35,4 +35,8 @@ export async function handleSigninCallback() {
 
 export async function signOut() {
   await oidc.signoutRedirect();
+}
+
+export async function removeLocalUser() {
+  await oidc.removeUser();
 }

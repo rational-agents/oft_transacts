@@ -5,14 +5,10 @@ import Accounts from "../pages/Accounts.vue";
 import { ensureSignedIn, handleSigninCallback } from "../lib/oidc";
 
 const routes: RouteRecordRaw[] = [
-  // keeps your original route + name
   { path: "/", name: "home", component: Home },
-
-  // keeps your original route + name; just marks it as protected
   { path: "/accounts", name: "accounts", component: Accounts, meta: { requiresAuth: true } },
-
-  // new: OIDC redirect target (Okta sends the user back here with ?code=...)
   { path: "/signin-callback", name: "signin-callback", component: { template: "<div>Signing in…</div>" } },
+  { path: "/logged-out", name: "logged-out", component: () => import("../pages/LoggedOut.vue") },
 ];
 
 const router = createRouter({
@@ -20,17 +16,20 @@ const router = createRouter({
   routes,
 });
 
-// Minimal global guard: only enforces auth where required
 router.beforeEach(async (to) => {
-  // Handle the OAuth 2.0 Authorization Code + PKCE callback
+  // Handle the OAuth 2.0 Authorization Code + PKCE callback and restore intended path
   if (to.path === "/signin-callback") {
-    await handleSigninCallback();        // processes ?code=... & stores tokens
-    return { name: "accounts" };         // land somewhere useful post-login
+    await handleSigninCallback();
+    const dest = sessionStorage.getItem("post_login_redirect") || "/accounts";
+    sessionStorage.removeItem("post_login_redirect");
+    return dest;
   }
 
   // Protect pages flagged as requiring auth
   if (to.meta.requiresAuth) {
-    await ensureSignedIn();              // triggers redirect to Okta if not signed in
+    // Remember where we were going, in case we need to leave to Okta
+    sessionStorage.setItem("post_login_redirect", to.fullPath);
+    await ensureSignedIn();
   }
 
   return true;

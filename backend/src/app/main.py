@@ -27,6 +27,13 @@ app.add_middleware(
     allow_headers=["*"], # allow all headers
 )
 
+@app.post("/logout")
+def logout():
+    resp = Response(status_code=204)
+    resp.headers["Clear-Site-Data"] = '"cache", "cookies", "storage", "executionContexts"'
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    return resp
+
 # Log DB URL on startup (after app is created)
 @app.on_event("startup")
 async def log_db_url():
